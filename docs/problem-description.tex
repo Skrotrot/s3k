@@ -1,0 +1,10 @@
+\documentclass{article}
+\begin{document}
+
+\section{Problem Description}
+The security problem we would like to address is control-flow hijacking through corruption of function return addresses. Any vulnerability that allows an attacker to overwrite a function's return address on the stack can potentially redirect a program's execution if no relevant mitigation techniques are present. Vulnerability classes where this exploit technique can be utilized include stack-based buffer overflows.
+\\
+\\
+A shadow stack attempts to mitigate this exploitation technique by keeping a separate, protected stack where copies of the original return addresses are stored. When a function returns, if the return address does not match the corresponding value in the shadow stack, the program can respond to the attack, usually by raising an exception or terminating execution.
+\end{document}
+
