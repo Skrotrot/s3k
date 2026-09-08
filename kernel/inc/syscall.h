@@ -48,6 +48,10 @@ typedef union {
 		uint64_t a0, a1, a2, a3, a4, a5, a6, a7;
 	};
 
+    struct {
+        uint64_t *val_ptr;
+    } increment;
+
 	struct {
 		uint64_t info;
 	} get_info;

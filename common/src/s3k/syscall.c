@@ -35,12 +35,19 @@ typedef enum {
 	S3K_SYS_SOCK_SEND,
 	S3K_SYS_SOCK_RECV,
 	S3K_SYS_SOCK_SENDRECV,
+    
+    // Demo
+    S3K_SYS_INC_VAL,
 } s3k_syscall_t;
 
 typedef union {
 	struct {
 		uint64_t a0, a1, a2, a3, a4, a5, a6, a7;
 	};
+
+    struct {
+        uint64_t *val_ptr;
+    } increment;
 
 	struct {
 		uint64_t info;
@@ -215,6 +222,12 @@ _Static_assert(sizeof(sys_args_t) == 64, "sys_args_t has the wrong size");
 		}                                                              \
 		(s3k_ret_t){.err = t0, .val = a0};                             \
 	})
+
+uint64_t s3k_inc_val(uint64_t *val_ptr)
+{
+    sys_args_t args = {.increment = {val_ptr}};
+	return DO_ECALL(S3K_SYS_INC_VAL, args, sizeof(args.get_info)).val;
+}
 
 uint64_t s3k_get_pid(void)
 {
