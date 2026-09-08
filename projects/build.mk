@@ -14,11 +14,13 @@ OBJS  :=${patsubst %.c,${BUILD}/%.o,${C_SRCS}} \
 	${STARTFILES}/start.o
 DEPS  :=${OBJS:.o=.d}
 
+EXTRA_C_FLAGS?=
 CFLAGS:=-march=${ARCH} -mabi=${ABI} -mcmodel=${CMODEL} \
 	-DPLATFORM_${PLATFORM} \
 	-nostdlib \
 	-Os -g3 -flto \
-	-I${COMMON_INC} -include ${S3K_CONF_H}
+	-I${COMMON_INC} -include ${S3K_CONF_H} \
+	${EXTRA_C_FLAGS}
 
 LDFLAGS:=-march=${ARCH} -mabi=${ABI} -mcmodel=${CMODEL} \
 	 -nostdlib \
