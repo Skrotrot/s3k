@@ -12,11 +12,13 @@ static int _call_depth = 0;
     alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
 
 #define CFI_RETURN(...) \
-    void *__cfi_ra_now; \
-    __asm__ volatile ("ld %0, 40(sp)" : "=r"(__cfi_ra_now)); \
-    alt_printf("Exit  %d              - 0x%x\n", \
-               _call_depth--, __cfi_ra_now); \
-    return __VA_ARGS__; \
+    do { \
+        void *__cfi_ra_now; \
+        __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
+        alt_printf("Exit  %d              - 0x%x\n", \
+                   _call_depth--, __cfi_ra_now); \
+        return __VA_ARGS__; \
+    } while (0)
 
 void win()
 {
@@ -35,7 +37,7 @@ void vulnerable(void)
 
     memset(source, 'A', 32); // Offset to RA
 
-    *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win()
+    *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win() (Will succeed)
 
     memcpy(buffer, source, sizeof(source) + 64);
 
@@ -51,7 +53,7 @@ int non_vulnerable(void)
   
     memset(source, 'A', 32); // Offset to RA
 
-    *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win()
+    *(uint64_t *)&source[32] = (uint64_t)win; // Try to overwrite RA with win() (Will fail)
   
     memcpy(buffer, source, sizeof(source) + 64); 
 
