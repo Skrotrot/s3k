@@ -16,7 +16,6 @@ int main(void)
 	// Setup UART access
 	setup_uart();
 
-	// Write hello world.
 	alt_printf("DEMO: Starting IPC monitor\n");
 
 	// Setup app1 capabilities and PC
@@ -25,46 +24,46 @@ int main(void)
 	// Setup scheduling
 	setup_scheduling(ROUND_ROBIN);
 
+	
 	uint32_t socket = setup_socket(true, true, false);
 	uint32_t free_cap_idx = find_free_cap();
 
 	s3k_mon_resume(MONITOR, APP1_PID);
 
-	// s3k_msg_t msg;
-
 	s3k_msg_t reply = {0};
 	s3k_reply_t receive;
-	
-	while (1) {
-		do {
-			receive = s3k_sock_recv(socket, free_cap_idx);
-			
-			if (receive.err == S3K_ERR_TIMEOUT)
-				alt_puts("0> timeout");
-		} while (receive.err);
+	s3k_state_t state;
+	s3k_err_t err;
+	const char *expected = "Return address";
+	//debg 
 
-
-		const unsigned char *actual = (const unsigned char *)receive.data;
-
+	int running = 1;
+	while (running) {
+		receive = s3k_sock_recv(socket, free_cap_idx);
 		alt_printf("FROM APP1: \"%s\" \n", ((char *)receive.data));
 
-		if ((memcmp(receive.data, "Return address", sizeof("Return address")))){
+		if ((memcmp(receive.data, expected, sizeof(expected)))){
 
 			memcpy(reply.data, "FROM MONITOR: ALLOWED", 32);
 			s3k_sock_send(socket, &reply);
 		}
-		else{
+		else
+		{
 			memcpy(reply.data, "FROM MONITOR: DENIED", 32);
 			s3k_sock_send(socket, &reply);
-			
-			// s3k_cap_revoke(HART0_TIME);
-			// debug_capability_from_idx(HART0_TIME);
+
+			// There are mulitple ways to remove capabilites from app1
+				//s3k_cap_delete(HART1_TIME);
+				//s3k_cap_revoke(HART0_TIME);
+
+			s3k_mon_suspend(MONITOR, APP1_PID);
+
+			err = s3k_mon_state_get(MONITOR, APP1_PID, &state);
+			if (err == S3K_SUCCESS)
+			{
+				alt_printf("app state: 0x%x\n", state);
+			}
 		}
-
 	}
+	alt_printf("program stopped!\n");
 }
-
-
-
-
-// int memcmp(const void *s1, const void *s2, size_t n);

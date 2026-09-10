@@ -17,20 +17,24 @@ int main(void)
 	alt_snprintf((char *)&(msg.data), 32, "Return address");
 	while (1) {
 		for(int i; i < 5; i++){
+
 			do {
+
 				//uint64_t ra = s3k_reg_read(S3K_REG_RA);
+				
 				alt_snprintf((char *)&(msg.data), 32, "Return address");
 				reply = s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg);
 				if (reply.err == S3K_ERR_TIMEOUT)
 					alt_puts("1> timeout");
-			} while (reply.err);
+			}while (reply.err);
+
 			alt_puts((char *)reply.data);
 		}	
 
 		for(int i; i < 5; i++){
 			do {
 				//uint64_t ra = s3k_reg_read(S3K_REG_RA);
-				alt_snprintf((char *)&(msg.data), 32, "AAAAAAAAAAAA");
+				alt_snprintf((char *)&(msg.data), 32, "Injected address");
 				reply = s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg);
 				if (reply.err == S3K_ERR_TIMEOUT)
 					alt_puts("1> timeout");
