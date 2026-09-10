@@ -1,0 +1,101 @@
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage[numbers]{natbib}
+\usepackage{url}
+\usepackage{hyperref}
+
+\lstset{
+    literate=
+        {å}{{\aa}}1
+        {ä}{{\"a}}1
+        {ö}{{\"o}}1
+        {Å}{{\AA}}1
+        {Ä}{{\"A}}1
+        {Ö}{{\"O}}1
+}
+% Line spacing
+\setstretch{1.1}
+\setlist[itemize]{noitemsep, topsep=0pt}
+
+% Section formatting
+
+
+
+% Code style
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\small,
+    frame=single,
+    breaklines=true,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{orange}
+}
+\lstset{style=mystyle}
+
+% Document
+\begin{document}
+
+\begin{center}
+    \textbf{\Large Project proposal - Contol-Flow Integrity} \\
+    \vspace{0.2cm}
+    Filip Redhammar, Jack Lindberg, Carl Tydén \\
+    DD249U - System security project
+\end{center}
+\vspace{-0.2cm}
+\section*{Background/Introduction}
+Our objective is to implement security measures in a small kernel for educational purposes. Our project idea is to utilize the capability-based separation kernel project called s3k provided and maintained by the Royal institute of technology. Our proposal is to implement a control-flow integrity feature that partially protects and mitigates certain types of binary exploitation.
+
+\section*{Problem Description}
+The security problem we would like to address is control-flow hijacking through corruption of function return addresses. Any vulnerability that allows an attacker to overwrite a function's return address on the stack can potentially redirect a program's execution if no relevant mitigation techniques are present. Vulnerability classes where this exploit technique can be utilized include stack-based buffer overflows.
+\\
+\\
+A shadow stack attempts to mitigate this exploitation technique by keeping a separate, protected stack where copies of the original return addresses are stored. When a function returns, if the return address does not match the corresponding value in the shadow stack, the program can respond to the attack, usually by raising an exception or terminating execution.
+
+\section*{Control-flow integrity}
+Control flow integrity is implemented in order to determine if the program runs as intended by the developer. This is primarily done by validaing function-calls, jumps or return addresses. This feature can be impelemented in differnet ways.  
+
+\subsection*{forward-edge}
+The validation occurs before the function is called, and the called address is compared against a predefined set of possible adresses. This predefined adress lists are parsed before runtime.
+\subsection*{backwards-edge}
+Backwards-edge CFI implements functions to validate the return adress of function calls performed during runtime, it saves the return adress as it enters the function and compares it with the return adress at end of the function to determine if it has been tampered with during the run. 
+\newpage
+\subsubsection*{shadow stack}
+This is a implementation closely related to the above feature. A shadow stack is a separate stack that stores the saved return adresses. This makes it possible to compare the return adress recursively using a LIFO stack. 
+\subsection*{Implementation}
+We are leaning against using a backwards-edge implementation, but there are still some concerns regarding the implementation of choice. This solution could be accomplished in various ways. \\
+\\
+\textbf{At compile time:}   
+\begin{itemize}
+    \item Compilation flags are inserted by the compiler. This enables the program to communicate externally with our implemented monitor.
+\end{itemize}
+\textbf{Issues:}  
+\begin{itemize}
+    \item This implementation is conventionally implemented using hardware. Software-based implementation could lead to uneccessary overhead.
+    \item Handling recusive calls could lead to overwriting the shadow-stack buffer.
+    \item A malicous user could be able to overwrite the functions that communicates the return adress with the monitor.
+\end{itemize}
+\textbf{Post compile time:} 
+\begin{itemize}
+    \item Parsing of the adresses are performed during runtime, this requires that the symbol-table is extracted or somehow that the executable runs monitored in a sandboxed enviroment with limited capabilites.  
+\end{itemize}
+\textbf{Issues:}  
+\begin{itemize}
+    \item How to properly hook all returns during runtime.
+    \item When to properly parse it? Is it possible to run the program sandboxed or without capabilities and parse the adresses before the program runs by the user.
+    \item How to actually read the return adress from memory in runtime?
+    \item What would happen if a malicious actor overwrites an entire function?
+\end{itemize}
+\end{document}
