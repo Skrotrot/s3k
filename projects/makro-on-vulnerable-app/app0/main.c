@@ -24,7 +24,7 @@ void win()
     do {} while(1);
 }
 
-static char source[24];
+static char source[32];
 
 void vulnerable(void)
 {
