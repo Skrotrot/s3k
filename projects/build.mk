@@ -18,13 +18,12 @@ EXTRA_C_FLAGS?=
 CFLAGS:=-march=${ARCH} -mabi=${ABI} -mcmodel=${CMODEL} \
 	-DPLATFORM_${PLATFORM} \
 	-nostdlib \
-	-Os -g3 -flto \
+	-Os -g3 -flto ${EXTRA_CFLAGS} \
 	-I${COMMON_INC} -include ${S3K_CONF_H} \
-	${EXTRA_C_FLAGS}
 
 LDFLAGS:=-march=${ARCH} -mabi=${ABI} -mcmodel=${CMODEL} \
 	 -nostdlib \
-	 -flto \
+	 -flto ${EXTRA_LDFLAGS} \
 	 -T${PROGRAM}.ld -Tdefault.ld \
 	 -Wl,--no-warn-rwx-segments \
 	 -L${COMMON_LIB} -ls3k -laltc -lplat \
