@@ -12,13 +12,11 @@ static int _call_depth = 0;
     alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
 
 #define CFI_RETURN(...) \
-    do { \
-        void *__cfi_ra_now; \
-        __asm__ volatile ("ld %0, 40(sp)" : "=r"(__cfi_ra_now)); \
-        alt_printf("Exit  %d              -> 0x%x\n", \
-                   _call_depth--, __cfi_ra_now); \
-        return __VA_ARGS__; \
-    } while (0)
+    void *__cfi_ra_now; \
+    __asm__ volatile ("ld %0, 40(sp)" : "=r"(__cfi_ra_now)); \
+    alt_printf("Exit  %d              - 0x%x\n", \
+               _call_depth--, __cfi_ra_now); \
+    return __VA_ARGS__; \
 
 void win()
 {
