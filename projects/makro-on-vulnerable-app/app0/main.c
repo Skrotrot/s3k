@@ -33,12 +33,29 @@ void vulnerable(void)
 
     alt_printf("Inside\n");
 
-    memset(source, 'A', 32); //Offset to RA
+    memset(source, 'A', 32); // Offset to RA
 
     *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win()
 
     memcpy(buffer, source, sizeof(source) + 64);
+
     CFI_RETURN();
+}
+
+int non_vulnerable(void)
+{
+    CFI_ENTER();
+    char buffer[128];
+
+    alt_printf("Inside\n");
+  
+    memset(source, 'A', 32); // Offset to RA
+
+    *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win()
+  
+    memcpy(buffer, source, sizeof(source) + 64); 
+
+    CFI_RETURN(1);
 }
 
 int main(void)
@@ -46,7 +63,11 @@ int main(void)
     // Setup UART access
     setup_uart();
 
-    alt_printf("Before\n");
+    alt_printf("Before Non-Vulnerable\n");
+
+    non_vulnerable();
+
+    alt_printf("Before Vulnerable\n");
 
     vulnerable();
 
