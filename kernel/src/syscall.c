@@ -45,6 +45,7 @@ static inline err_t validate_mon_pmp_unload(const sys_args_t *);
 static inline err_t validate_sock_send(const sys_args_t *);
 static inline err_t validate_sock_recv(const sys_args_t *);
 static inline err_t validate_sock_sendrecv(const sys_args_t *);
+static inline err_t validate_inc_value(const sys_args_t *);
 
 static proc_t *handle_get_info(proc_t *const, const sys_args_t *);
 static proc_t *handle_reg_read(proc_t *const, const sys_args_t *);
@@ -71,6 +72,7 @@ static proc_t *handle_mon_pmp_unload(proc_t *const, const sys_args_t *);
 static proc_t *handle_sock_send(proc_t *const, const sys_args_t *);
 static proc_t *handle_sock_recv(proc_t *const, const sys_args_t *);
 static proc_t *handle_sock_sendrecv(proc_t *const, const sys_args_t *);
+static proc_t *handle_inc_value(proc_t *const, const sys_args_t *);
 
 typedef proc_t *(*handler_t)(proc_t *const, const sys_args_t *);
 typedef err_t (*validator_t)(const sys_args_t *);
@@ -84,7 +86,7 @@ handler_t handlers[] = {
     handle_mon_yield,	   handle_mon_reg_read, handle_mon_reg_write,
     handle_mon_cap_read,   handle_mon_cap_move, handle_mon_pmp_load,
     handle_mon_pmp_unload, handle_sock_send,	handle_sock_recv,
-    handle_sock_sendrecv,
+    handle_sock_sendrecv, handle_inc_value,
 };
 
 validator_t validators[] = {
@@ -96,7 +98,7 @@ validator_t validators[] = {
     validate_mon_yield,	     validate_mon_reg_read, validate_mon_reg_write,
     validate_mon_cap_read,   validate_mon_cap_move, validate_mon_pmp_load,
     validate_mon_pmp_unload, validate_sock_send,    validate_sock_recv,
-    validate_sock_sendrecv,
+    validate_sock_sendrecv, validate_inc_value,
 };
 
 proc_t *syscall_handler(proc_t *proc)
@@ -166,6 +168,15 @@ static bool valid_pid(pid_t pid)
 static bool valid_reg(reg_t reg)
 {
 	return reg < REG_CNT;
+}
+
+err_t validate_inc_value(const sys_args_t *args) {
+    return SUCCESS;
+}
+
+static proc_t *handle_inc_value(proc_t *const proc, const sys_args_t *args) {
+    *args->increment.val_ptr = *args->increment.val_ptr + 1;
+    return proc;
 }
 
 err_t validate_get_info(const sys_args_t *args)
