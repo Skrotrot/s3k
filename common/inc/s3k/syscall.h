@@ -1,7 +1,8 @@
 #pragma once
 #include "s3k/types.h"
 
-uint64_t s3k_inc_val(uint64_t *val);
+void s3k_inc_demo_val(uint64_t amount);
+uint64_t s3k_get_demo_val(void);
 uint64_t s3k_get_pid(void);
 uint64_t s3k_get_time(void);
 uint64_t s3k_get_timeout(void);

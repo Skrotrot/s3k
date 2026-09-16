@@ -94,6 +94,10 @@ typedef struct {
 	 * it is not allowed to send the message.
 	 */
 	uint64_t serv_time;
+    /**
+     * A demo allocated data to show we can allocate data in the kernel
+    **/
+    uint64_t demo_counter;
 } proc_t;
 
 /**
@@ -110,6 +114,9 @@ void proc_init(void);
  * @return A pointer to the process corresponding to the given PID.
  */
 proc_t *proc_get(pid_t pid);
+
+void proc_demo_counter_inc(proc_t *proc, uint64_t amount);
+uint64_t proc_get_demo_counter(proc_t *proc);
 
 proc_state_t proc_get_state(proc_t *proc);
 

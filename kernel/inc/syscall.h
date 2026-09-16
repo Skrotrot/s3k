@@ -41,6 +41,10 @@ typedef enum {
 	SYS_SOCK_SEND,
 	SYS_SOCK_RECV,
 	SYS_SOCK_SENDRECV,
+
+	// Demo
+	SYS_INC_DEMO_VAL,
+	SYS_GET_DEMO_VAL,
 } syscall_t;
 
 typedef union {
@@ -55,6 +59,10 @@ typedef union {
 	struct {
 		uint64_t info;
 	} get_info;
+
+    struct {
+        uint64_t value;
+    } demo;
 
 	struct {
 		uint64_t reg;

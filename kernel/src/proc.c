@@ -14,6 +14,8 @@ void proc_init(void)
 	for (uint64_t i = 0; i < S3K_PROC_CNT; i++) {
 		procs[i].pid = i;
 		procs[i].state = PSF_SUSPENDED;
+        // Set the initial value to 0
+        procs[i].demo_counter = 0;
 	}
 	procs[0].state = 0;
 	procs[0].regs[REG_PC] = (uint64_t)_payload;
@@ -25,6 +27,17 @@ proc_t *proc_get(pid_t pid)
 	KASSERT(pid < S3K_PROC_CNT);
 	KASSERT(procs[pid].pid == pid);
 	return &procs[pid];
+}
+
+// Increases the value of the demo_counter by `amount` for the current process
+void proc_demo_counter_inc(proc_t *proc, uint64_t amount)
+{
+    proc->demo_counter += amount;
+}
+
+uint64_t proc_get_demo_counter(proc_t *proc) 
+{
+    return proc -> demo_counter;
 }
 
 proc_state_t proc_get_state(proc_t *proc)
