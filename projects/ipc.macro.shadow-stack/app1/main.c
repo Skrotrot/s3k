@@ -8,24 +8,21 @@ static int _call_depth = 0;
 
 #define CFI_ENTER() \
     s3k_msg_t msg = {0}; \
-    s3k_reply_t reply; \
     void *__cfi_ra; \
     __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
-    alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra); \
+    msg.data[0] = (uint64_t)__cfi_ra; \
+    msg.data[1] = (uint64_t)1; /* msg.data[1] set to 1 in order to distinguish between Enter or Exit. */ \
     s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-    alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
    
 
 #define CFI_RETURN(...) \
     do { \
         s3k_msg_t msg = {0}; \
-        s3k_reply_t reply; \
         void *__cfi_ra_now; \
         __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
-        alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra_now); \
+        msg.data[0] = (uint64_t)__cfi_ra_now; \
+        msg.data[1] = (uint64_t)0; \
         s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-        alt_printf("Exit  %d              - 0x%x\n", \
-                   _call_depth--, __cfi_ra_now); \
         return __VA_ARGS__; \
     } while (0)
 
@@ -64,7 +61,7 @@ int non_vulnerable(void)
 
     *(uint64_t *)&source[32] = (uint64_t)win; // Try to overwrite RA with win() (Will fail)
   
-    memcpy(buffer, source, sizeof(source) + 64); 
+    memcpy(buffer, source, sizeof(source)); 
 
     CFI_RETURN(1);
 }

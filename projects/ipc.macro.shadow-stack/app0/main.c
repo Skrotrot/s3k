@@ -1,7 +1,7 @@
 /*
 MONITOR DEMO
 
-responsible for answering IPC from user-created app. 
+Responsible for answering IPC from user-created app. 
 
 */ 
 
@@ -9,7 +9,7 @@ responsible for answering IPC from user-created app.
 #include "s3k/s3k.h"
 #include "altc/string.h"
 #include "../../tutorial-commons/utils.h"
-
+#include "stack.h"
 void local_scheduling()
 {
 	s3k_cap_delete(HART2_TIME);
@@ -40,7 +40,6 @@ int main(void)
 {
 	// Setup UART access
 	setup_uart();
-
 	alt_printf("DEMO: Starting IPC monitor\n");
 
 	// Setup app1 capabilities and PC
@@ -57,40 +56,39 @@ int main(void)
 	s3k_reply_t receive;
 	s3k_state_t state;
 	s3k_err_t err;
-	uint64_t latest[4] = {0};
+	uint64_t latest = {0};
+	uint64_t push_value[4] = {0};
 	memcpy(reply.data, "1", 1);
 	int adress_stored = 0;
 	
+	Stack *shadow_stack = init_stack();
 	//debg 
-
 	int running = 1;
-
-
 	while (running) {
 		receive = s3k_sock_recv(socket, free_cap_idx);
-		alt_printf("FROM APP1: \"%s\" \n", ((char *)receive.data));
-
-		if (!adress_stored){
-			memcpy(latest, receive.data, sizeof(receive.data));
-			s3k_sock_send(socket, &reply);
-
-			adress_stored = 1;
-		}
-		else if((memcmp(receive.data, latest, sizeof(latest))))
+		alt_printf("	FROM APP1: 0x%x \n",  receive.data[0]);
+		
+		if(receive.data[1])
 		{
-			alt_printf("Allowed!\n");
+			push(shadow_stack, receive.data[0]);
 			s3k_sock_send(socket, &reply);
-			memset(latest, 0, 1);
-
-			adress_stored = 0;
 		}
 		else
 		{
-			alt_printf("Denied!\n");
-			s3k_sock_send(socket, &reply);
-
-			running = terminate_process(MONITOR, APP1_PID, state);
+			uint64_t address_from_stack = pop(shadow_stack);
+			alt_printf("	FROM STACK: 0x%x \n", address_from_stack);
+			if((memcmp(&receive.data[0], &address_from_stack, sizeof(receive.data))))
+			{
+				alt_printf("Allowed!\n");
+				s3k_sock_send(socket, &reply);
+			}
+			else
+			{
+				alt_printf("Denied!\n");
+				s3k_sock_send(socket, &reply);
+				running = terminate_process(MONITOR, APP1_PID, state);
+			}
 		}
 	}
-	alt_printf("program terminated!\n");
 }
+
