@@ -2,14 +2,20 @@
 
 #ifndef STACK_H
 #define STACK_H
+#define STACK_SIZE 1024
 
-typedef struct Stack Stack;
+typedef struct Stack 
+{
+  uint64_t stack_frame[STACK_SIZE];
+  int stack_pointer;
+} Stack;
 
-Stack* init_stack(void);
+
+Stack init_stack(void);
 
 void push(Stack *stack, uint64_t cfi_ra);
 
-void pop(Stack *stack, uint64_t cfi_ra_now);
+uint64_t pop(Stack *stack);
 
 #endif
 
