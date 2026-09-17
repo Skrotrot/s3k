@@ -1,6 +1,8 @@
 #pragma once
 #include "s3k/types.h"
 
+void s3k_shadow_stack_push(void *ra);
+bool s3k_shadow_stack_pop(void *ra);
 uint64_t s3k_get_pid(void);
 uint64_t s3k_get_time(void);
 uint64_t s3k_get_timeout(void);

@@ -41,6 +41,10 @@ typedef enum {
 	SYS_SOCK_SEND,
 	SYS_SOCK_RECV,
 	SYS_SOCK_SENDRECV,
+
+	// Shadow Stack
+	SYS_SHADOW_STACK_PUSH,
+	SYS_SHADOW_STACK_POP,
 } syscall_t;
 
 typedef union {
@@ -152,6 +156,10 @@ typedef union {
 		uint64_t send_cap;
 		uint64_t data[4];
 	} sock;
+
+	struct {
+		void *address;
+	} code_address;
 } sys_args_t;
 
 _Static_assert(sizeof(sys_args_t) == 64, "sys_args_t has the wrong size");

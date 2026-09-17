@@ -1,3 +1,4 @@
+#include "s3k/syscall.h"
 #include "s3k/s3k.h"
 
 typedef enum {
@@ -35,6 +36,10 @@ typedef enum {
 	S3K_SYS_SOCK_SEND,
 	S3K_SYS_SOCK_RECV,
 	S3K_SYS_SOCK_SENDRECV,
+
+    // Shadow Stack
+    S3K_SYS_SHADOW_STACK_PUSH,
+    S3K_SYS_SHADOW_STACK_POP,
 } s3k_syscall_t;
 
 typedef union {
@@ -146,6 +151,10 @@ typedef union {
 		uint64_t send_cap;
 		uint64_t data[4];
 	} sock;
+
+    struct {
+        void *address;
+    } code_address;
 } sys_args_t;
 
 typedef struct {
@@ -215,6 +224,18 @@ _Static_assert(sizeof(sys_args_t) == 64, "sys_args_t has the wrong size");
 		}                                                              \
 		(s3k_ret_t){.err = t0, .val = a0};                             \
 	})
+
+void s3k_shadow_stack_push(void *ra) 
+{
+    sys_args_t args = {.code_address = {ra}};
+	DO_ECALL(S3K_SYS_SHADOW_STACK_PUSH, args, sizeof(args.code_address));
+}
+
+bool s3k_shadow_stack_pop(void *ra) 
+{
+    sys_args_t args = {.code_address = {ra}};
+	return DO_ECALL(S3K_SYS_SHADOW_STACK_POP, args, sizeof(args.code_address)).val;
+}
 
 uint64_t s3k_get_pid(void)
 {
