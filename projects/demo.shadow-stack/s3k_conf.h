@@ -24,3 +24,6 @@
 // If debugging, comment
 //#define NDEBUG
 #define VERBOSITY 0
+
+// Number of return addresses per process' shadow stack.
+#define S3K_SHADOW_STACK_SIZE 10

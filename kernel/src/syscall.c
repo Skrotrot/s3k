@@ -631,9 +631,9 @@ err_t validate_shadow_stack_push(const sys_args_t *args)
 
 proc_t *handle_shadow_stack_push(proc_t *const p, const sys_args_t *args)
 {
+	p->regs[REG_T0] = SUCCESS;
 	p->regs[REG_A0]
 	    = shadow_stack_push(p->pid, (uint64_t)args->code_address.address);
-	p->regs[REG_T0] = SUCCESS;
 	return p;
 }
 
@@ -644,8 +644,8 @@ err_t validate_shadow_stack_pop(const sys_args_t *args)
 
 proc_t *handle_shadow_stack_pop(proc_t *const p, const sys_args_t *args)
 {
+	p->regs[REG_T0] = SUCCESS;
 	p->regs[REG_A0]
 	    = shadow_stack_pop(p->pid, (uint64_t)args->code_address.address);
-	p->regs[REG_T0] = SUCCESS;
 	return p;
 }

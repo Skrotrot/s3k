@@ -225,13 +225,13 @@ _Static_assert(sizeof(sys_args_t) == 64, "sys_args_t has the wrong size");
 		(s3k_ret_t){.err = t0, .val = a0};                             \
 	})
 
-void s3k_shadow_stack_push(void *ra) 
+s3k_shadow_stack_result_t s3k_shadow_stack_push(void *ra)
 {
     sys_args_t args = {.code_address = {ra}};
-	DO_ECALL(S3K_SYS_SHADOW_STACK_PUSH, args, sizeof(args.code_address));
+	return DO_ECALL(S3K_SYS_SHADOW_STACK_PUSH, args, sizeof(args.code_address)).val;
 }
 
-bool s3k_shadow_stack_pop(void *ra) 
+s3k_shadow_stack_result_t s3k_shadow_stack_pop(void *ra)
 {
     sys_args_t args = {.code_address = {ra}};
 	return DO_ECALL(S3K_SYS_SHADOW_STACK_POP, args, sizeof(args.code_address)).val;

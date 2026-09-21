@@ -1,9 +1,12 @@
 #include "shadow_stack.h"
+#include <stdint.h>
 
-#define SHADOW_STACK_SIZE 1024
+#ifndef S3K_SHADOW_STACK_SIZE
+#define S3K_SHADOW_STACK_SIZE 1024
+#endif
 
 typedef struct {
-	uint64_t frame[SHADOW_STACK_SIZE];
+	uint64_t frame[S3K_SHADOW_STACK_SIZE];
 	int sp;
 } shadow_stack_t;
 
@@ -15,26 +18,26 @@ void shadow_stack_init(void)
 		stacks[i].sp = -1;
 }
 
-bool shadow_stack_push(pid_t pid, uint64_t ra)
+shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra)
 {
 	shadow_stack_t *stack = &stacks[pid];
 
-	if (stack->sp >= SHADOW_STACK_SIZE - 1)
-		return false;
+	if (stack->sp >= S3K_SHADOW_STACK_SIZE - 1)
+		return SHADOW_STACK_OVERFLOW;
 
 	stack->sp++;
 	stack->frame[stack->sp] = ra;
-	return true;
+	return SHADOW_STACK_OK;
 }
 
-bool shadow_stack_pop(pid_t pid, uint64_t ra)
+shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra)
 {
 	shadow_stack_t *stack = &stacks[pid];
 
 	if (stack->sp < 0)
-		return false;
+		return SHADOW_STACK_UNDERFLOW;
 	bool match = stack->frame[stack->sp] == ra;
 
 	stack->sp--;
-	return match;
+	return match ? SHADOW_STACK_OK : SHADOW_STACK_MISMATCH;
 }

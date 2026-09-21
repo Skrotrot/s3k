@@ -45,6 +45,13 @@ typedef enum {
 } s3k_err_t;
 
 typedef enum {
+	S3K_SHADOW_STACK_OK = 0,
+	S3K_SHADOW_STACK_MISMATCH,
+	S3K_SHADOW_STACK_UNDERFLOW,
+	S3K_SHADOW_STACK_OVERFLOW,
+} s3k_shadow_stack_result_t;
+
+typedef enum {
 	S3K_PSF_BUSY = 0x1,
 	S3K_PSF_BLOCKED = 0x2,
 	S3K_PSF_SUSPENDED = 0x4,
