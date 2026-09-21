@@ -7,6 +7,7 @@
 #include "kassert.h"
 #include "proc.h"
 #include "sched.h"
+#include "shadow_stack.h"
 
 void kernel_init(void)
 {
@@ -22,6 +23,8 @@ void kernel_init(void)
 	kprintf(0, "# scheduler initialized\n");
 	proc_init();
 	kprintf(0, "# processes initialized\n");
+	shadow_stack_init();
+	kprintf(0, "# shadow stacks initialized\n");
 	kprintf(0, "# kernel initialization complete\n");
 	kprintf(0, "# starting boot process\n");
 }
