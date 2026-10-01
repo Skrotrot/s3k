@@ -1,5 +1,5 @@
 #include "shadow_stack.h"
-#include <stdint.h>
+#include "backup.h"
 
 #ifndef S3K_SHADOW_STACK_SIZE
 #define S3K_SHADOW_STACK_SIZE 1024
@@ -16,6 +16,11 @@ void shadow_stack_init(void)
 {
 	for (uint64_t i = 0; i < S3K_PROC_CNT; i++)
 		stacks[i].sp = -1;
+}
+
+void shadow_stack_reset(pid_t pid)
+{
+	stacks[pid].sp = -1;
 }
 
 shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra)
@@ -37,7 +42,13 @@ shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra)
 	if (stack->sp < 0)
 		return SHADOW_STACK_UNDERFLOW;
 	bool match = stack->frame[stack->sp] == ra;
+    stack->sp--;
+    
+    if (!match) {
+        proc_suspend(proc_get(pid));
+        process_backup_recover(pid);
+        return SHADOW_STACK_MISMATCH;
+    }
 
-	stack->sp--;
-	return match ? SHADOW_STACK_OK : SHADOW_STACK_MISMATCH;
+	return SHADOW_STACK_OK;
 }
