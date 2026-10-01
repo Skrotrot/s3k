@@ -9,7 +9,8 @@ Responsible for answering IPC from user-created app.
 #include "s3k/s3k.h"
 #include "altc/string.h"
 #include "../../tutorial-commons/utils.h"
-#include "stack.h"
+#include "shadow_stack.h"
+
 void local_scheduling()
 {
 	s3k_cap_delete(HART2_TIME);
@@ -61,7 +62,7 @@ int main(void)
 	memcpy(reply.data, "1", 1);
 	int adress_stored = 0;
 	
-	Stack *shadow_stack = init_stack();
+	shadow_stack_init();
 	//debg 
 	int running = 1;
 	while (running) {
@@ -70,25 +71,48 @@ int main(void)
 		
 		if(receive.data[1])
 		{
-			push(shadow_stack, receive.data[0]);
+			shadow_stack_push(APP1_PID, receive.data[0]);
 			s3k_sock_send(socket, &reply);
 		}
 		else
 		{
-			uint64_t address_from_stack = pop(shadow_stack);
-			alt_printf("	FROM STACK: 0x%x \n", address_from_stack);
-			if((memcmp(&receive.data[0], &address_from_stack, sizeof(receive.data))))
-			{
-				alt_printf("Allowed!\n");
-				s3k_sock_send(socket, &reply);
-			}
-			else
-			{
-				alt_printf("Denied!\n");
-				s3k_sock_send(socket, &reply);
-				running = terminate_process(MONITOR, APP1_PID, state);
-			}
+			switch(shadow_stack_pop(APP1_PID, receive.data[0]))
+      {
+        case SHADOW_STACK_OK:
+        {
+				  alt_printf("Allowed!\n");
+			  	s3k_sock_send(socket, &reply);
+          break;
+		  	} 
+        case SHADOW_STACK_MISMATCH:
+			  {
+				  alt_printf("Denied!\n");
+				  s3k_sock_send(socket, &reply);
+				  running = terminate_process(MONITOR, APP1_PID, state);
+          break;
+			  }
+        case SHADOW_STACK_UNDERFLOW:
+        {
+          alt_printf("Shadow stack underflow\n");
+				  s3k_sock_send(socket, &reply);
+				  running = terminate_process(MONITOR, APP1_PID, state);
+          break;
+        }
+        case SHADOW_STACK_OVERFLOW:
+        {
+          alt_printf("Shadow stack overflow\n");
+				  s3k_sock_send(socket, &reply);
+				  running = terminate_process(MONITOR, APP1_PID, state);
+          break;
+        }
+        case SHADOW_STACK_INVALID_PID:
+        {
+          alt_printf("Invalid shadow stack PID\n");
+					s3k_sock_send(socket, &reply);
+					running = terminate_process(MONITOR, APP1_PID, state);
+          break;
+        }
+      }
 		}
 	}
 }
-
