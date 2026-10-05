@@ -28,6 +28,10 @@ int terminate_process(int monitor, int app1_id, s3k_state_t state)
 	
 		// s3k_cap_revoke(HART0_TIME);
 	s3k_mon_suspend(MONITOR, APP1_PID);
+<<<<<<< Updated upstream
+=======
+	
+>>>>>>> Stashed changes
 	if (s3k_mon_state_get(MONITOR, APP1_PID, &state) == S3K_SUCCESS)
 	{
 		alt_printf("app state: 0x%x\n", state);
@@ -89,6 +93,14 @@ int main(void)
 			s3k_sock_send(socket, &reply);
 
 			running = terminate_process(MONITOR, APP1_PID, state);
+<<<<<<< Updated upstream
+=======
+
+			if (s3k_cap_revoke(free_cap_idx); == S3K_SUCCESS)
+			{
+				alt_printf("app state: 0x%x\n", state);
+			}
+>>>>>>> Stashed changes
 		}
 	}
 	alt_printf("program terminated!\n");
