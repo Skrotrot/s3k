@@ -40,6 +40,10 @@ typedef enum {
     // Shadow Stack
     S3K_SYS_SHADOW_STACK_PUSH,
     S3K_SYS_SHADOW_STACK_POP,
+
+    // Backup
+    S3K_SYS_BACKUP_WRITE,
+    S3K_SYS_BACKUP_READ,
 } s3k_syscall_t;
 
 typedef union {
@@ -235,6 +239,18 @@ s3k_shadow_stack_result_t s3k_shadow_stack_pop(void *ra)
 {
     sys_args_t args = {.code_address = {ra}};
 	return DO_ECALL(S3K_SYS_SHADOW_STACK_POP, args, sizeof(args.code_address)).val;
+}
+
+bool s3k_backup_write(void)
+{
+    sys_args_t args = {.a0 = 0};
+    return DO_ECALL(S3K_SYS_BACKUP_WRITE, args, sizeof(args.a0)).val;
+}
+
+bool s3k_backup_read(void)
+{
+    sys_args_t args = {.a0 = 0};
+    return DO_ECALL(S3K_SYS_BACKUP_READ, args, sizeof(args.a0)).val;
 }
 
 uint64_t s3k_get_pid(void)

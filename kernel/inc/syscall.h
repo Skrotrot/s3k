@@ -45,6 +45,10 @@ typedef enum {
 	// Shadow Stack
 	SYS_SHADOW_STACK_PUSH,
 	SYS_SHADOW_STACK_POP,
+
+    // Backup program
+    SYS_BACKUP_WRITE,
+    SYS_BACKUP_READ,
 } syscall_t;
 
 typedef union {
