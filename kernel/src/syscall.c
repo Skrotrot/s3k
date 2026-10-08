@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include "syscall.h"
 
+#include "backup.h"
 #include "cap_ipc.h"
 #include "cap_lock.h"
 #include "cap_monitor.h"
@@ -48,6 +49,8 @@ static inline err_t validate_sock_recv(const sys_args_t *);
 static inline err_t validate_sock_sendrecv(const sys_args_t *);
 static inline err_t validate_shadow_stack_push(const sys_args_t *);
 static inline err_t validate_shadow_stack_pop(const sys_args_t *);
+static inline err_t validate_backup_write(const sys_args_t *);
+static inline err_t validate_backup_read(const sys_args_t *);
 
 static proc_t *handle_get_info(proc_t *const, const sys_args_t *);
 static proc_t *handle_reg_read(proc_t *const, const sys_args_t *);
@@ -76,6 +79,8 @@ static proc_t *handle_sock_recv(proc_t *const, const sys_args_t *);
 static proc_t *handle_sock_sendrecv(proc_t *const, const sys_args_t *);
 static proc_t *handle_shadow_stack_push(proc_t *const, const sys_args_t *);
 static proc_t *handle_shadow_stack_pop(proc_t *const, const sys_args_t *);
+static proc_t *handle_backup_write(proc_t *const, const sys_args_t *);
+static proc_t *handle_backup_read(proc_t *const, const sys_args_t *);
 
 typedef proc_t *(*handler_t)(proc_t *const, const sys_args_t *);
 typedef err_t (*validator_t)(const sys_args_t *);
@@ -90,6 +95,7 @@ handler_t handlers[] = {
     handle_mon_cap_read,   handle_mon_cap_move, handle_mon_pmp_load,
     handle_mon_pmp_unload, handle_sock_send,	handle_sock_recv,
     handle_sock_sendrecv, handle_shadow_stack_push, handle_shadow_stack_pop,
+    handle_backup_write, handle_backup_read
 };
 
 validator_t validators[] = {
@@ -102,6 +108,7 @@ validator_t validators[] = {
     validate_mon_cap_read,   validate_mon_cap_move, validate_mon_pmp_load,
     validate_mon_pmp_unload, validate_sock_send,    validate_sock_recv,
     validate_sock_sendrecv, validate_shadow_stack_push, validate_shadow_stack_pop,
+    validate_backup_write, validate_backup_read
 };
 
 proc_t *syscall_handler(proc_t *proc)
@@ -644,8 +651,40 @@ err_t validate_shadow_stack_pop(const sys_args_t *args)
 
 proc_t *handle_shadow_stack_pop(proc_t *const p, const sys_args_t *args)
 {
-	p->regs[REG_T0] = SUCCESS;
-	p->regs[REG_A0]
-	    = shadow_stack_pop(p->pid, (uint64_t)args->code_address.address);
-	return p;
+    shadow_stack_result_t result = shadow_stack_pop(p->pid, (uint64_t)args->code_address.address);
+
+    if (result == SHADOW_STACK_MISMATCH)
+        return (p->state & PSF_SUSPENDED) ? NULL : p;
+
+    p->regs[REG_T0] = SUCCESS;
+    p->regs[REG_A0] = result;
+    return p;
+}
+
+err_t validate_backup_write(const sys_args_t *args)
+{
+	return SUCCESS;
+}
+
+proc_t *handle_backup_write(proc_t *const p, const sys_args_t *args)
+{
+    p->regs[REG_T0] = SUCCESS;
+    p->regs[REG_A0] = true;
+    process_backup_write(p->pid);
+    return p;
+}
+
+err_t validate_backup_read(const sys_args_t *args)
+{
+	return SUCCESS;
+}
+
+proc_t *handle_backup_read(proc_t *const p, const sys_args_t *args)
+{
+    if (process_backup_recover(p->pid))
+        return p;
+
+    p->regs[REG_T0] = SUCCESS;
+    p->regs[REG_A0] = false;
+    return NULL;
 }

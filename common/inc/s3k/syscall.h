@@ -3,6 +3,8 @@
 
 s3k_shadow_stack_result_t s3k_shadow_stack_push(void *ra);
 s3k_shadow_stack_result_t s3k_shadow_stack_pop(void *ra);
+bool s3k_backup_write(void);
+bool s3k_backup_read(void);
 uint64_t s3k_get_pid(void);
 uint64_t s3k_get_time(void);
 uint64_t s3k_get_timeout(void);

@@ -11,6 +11,8 @@ typedef enum {
 
 void shadow_stack_init(void);
 
+void shadow_stack_reset(pid_t pid);
+
 shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra);
 
 shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra);

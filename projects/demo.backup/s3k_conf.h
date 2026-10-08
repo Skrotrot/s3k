@@ -29,4 +29,4 @@
 #define S3K_SHADOW_STACK_SIZE 10
 
 // Max amount of resets if the a shadowstack mismatch happens
-#define S3K_PROC_MAX_RESETS 1
+#define S3K_PROC_MAX_RESETS 3

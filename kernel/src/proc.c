@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include "proc.h"
 
+#include "backup.h"
 #include "cap_pmp.h"
 #include "csr.h"
 #include "drivers/time.h"
@@ -14,10 +15,13 @@ void proc_init(void)
 	for (uint64_t i = 0; i < S3K_PROC_CNT; i++) {
 		procs[i].pid = i;
 		procs[i].state = PSF_SUSPENDED;
+        procs_reset_count[i] = 0;
 	}
 	procs[0].state = 0;
 	procs[0].regs[REG_PC] = (uint64_t)_payload;
 	KASSERT(cap_pmp_load(ctable_get(0, 0), 0) == SUCCESS);
+
+	process_backup_write(0);
 }
 
 proc_t *proc_get(pid_t pid)

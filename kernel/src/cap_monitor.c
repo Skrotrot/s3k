@@ -1,5 +1,6 @@
 #include "cap_monitor.h"
 
+#include "backup.h"
 #include "cap_ops.h"
 #include "cap_pmp.h"
 #include "proc.h"
@@ -39,8 +40,11 @@ err_t cap_monitor_suspend(cte_t mon, pid_t pid)
 err_t cap_monitor_resume(cte_t mon, pid_t pid)
 {
 	err_t err = check_monitor(mon, pid, false);
-	if (!err)
+	if (!err) {
 		proc_resume(proc_get(pid));
+		
+		process_backup_write(pid);
+	}
 	return err;
 }
 
