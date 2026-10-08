@@ -654,7 +654,7 @@ proc_t *handle_shadow_stack_pop(proc_t *const p, const sys_args_t *args)
     shadow_stack_result_t result = shadow_stack_pop(p->pid, (uint64_t)args->code_address.address);
 
     if (result == SHADOW_STACK_MISMATCH)
-        return (p->state & PSF_SUSPENDED) ? NULL : p;
+        return p;
 
     p->regs[REG_T0] = SUCCESS;
     p->regs[REG_A0] = result;

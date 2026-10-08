@@ -2,6 +2,8 @@
 
 #include "cap_types.h"
 
+#define MCAUSE_CFI_VIOLATION 24
+
 typedef enum {
 	SHADOW_STACK_OK = 0,
 	SHADOW_STACK_MISMATCH,

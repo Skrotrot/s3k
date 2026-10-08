@@ -1,5 +1,5 @@
 #include "shadow_stack.h"
-#include "backup.h"
+#include "proc.h"
 
 #ifndef S3K_SHADOW_STACK_SIZE
 #define S3K_SHADOW_STACK_SIZE 1024
@@ -35,6 +35,18 @@ shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra)
 	return SHADOW_STACK_OK;
 }
 
+static proc_t *shadow_stack_trap_trigger(proc_t *proc, uint64_t mcause,
+				      uint64_t mtval)
+{
+	proc->regs[REG_ECAUSE] = mcause;
+	proc->regs[REG_EVAL] = mtval;
+	proc->regs[REG_EPC] = proc->regs[REG_PC];
+	proc->regs[REG_ESP] = proc->regs[REG_SP];
+	proc->regs[REG_PC] = proc->regs[REG_TPC];
+	proc->regs[REG_SP] = proc->regs[REG_TSP];
+	return proc;
+}
+
 shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra)
 {
 	shadow_stack_t *stack = &stacks[pid];
@@ -43,10 +55,9 @@ shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra)
 		return SHADOW_STACK_UNDERFLOW;
 	bool match = stack->frame[stack->sp] == ra;
     stack->sp--;
-    
+
     if (!match) {
-        proc_suspend(proc_get(pid));
-        process_backup_recover(pid);
+        shadow_stack_trap_trigger(proc_get(pid), MCAUSE_CFI_VIOLATION, ra);
         return SHADOW_STACK_MISMATCH;
     }
 
