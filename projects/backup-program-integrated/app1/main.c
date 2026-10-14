@@ -1,0 +1,122 @@
+#include "altc/altio.h"
+#include "altc/string.h"
+#include "s3k/s3k.h"
+
+#include "../../tutorial-commons/utils.h"
+#define BUF_OFFSET 128
+
+#define UART_RHR        0
+#define UART_LSR        5
+#define UART_LSR_DR     0x01
+
+static int _call_depth = 0;
+
+#define CFI_ENTER() \
+    s3k_msg_t msg = {0}; \
+    s3k_reply_t reply; \
+    void *__cfi_ra; \
+    __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
+    alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra); \
+    s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
+    alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
+   
+
+#define CFI_RETURN(...) \
+    do { \
+        s3k_msg_t msg = {0}; \
+        s3k_reply_t reply; \
+        void *__cfi_ra_now; \
+        __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
+        alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra_now); \
+        s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
+        alt_printf("Exit  %d              - 0x%x\n", \
+                   _call_depth--, __cfi_ra_now); \
+        return __VA_ARGS__; \
+    } while (0)
+
+
+static char uart_getchar(void)
+{
+    volatile uint8_t *uart =
+        (volatile uint8_t *)UART0_BASE_ADDR;
+
+    /* Wait until a character is available. */
+    while ((uart[UART_LSR] & UART_LSR_DR) == 0) {
+    }
+
+    return (char)uart[UART_RHR];
+}
+
+void win()
+{
+    alt_printf("Attack Works\n");
+    do {} while(1);
+}
+
+static char source[BUF_OFFSET];
+ 
+void vulnerable(void)
+{
+    CFI_ENTER();
+    char buffer[2];
+
+    alt_printf("Inside vulnearble\n");
+
+    memset(source, 'A', BUF_OFFSET); // Offset to RA, changed due to larger RETURN macro.
+
+    *(uint64_t *)&source[BUF_OFFSET - 8] = (uint64_t)win; // Overwrite RA with win() (Will succeed)
+
+    memcpy(buffer, source, sizeof(source));
+
+    CFI_RETURN();
+}
+
+int non_vulnerable(void)
+{
+    CFI_ENTER();
+    char buffer[128];
+
+    alt_printf("Inside non-vulnerable\n");
+  
+    memset(source, 'A', 32); // Offset to RA
+
+    *(uint64_t *)&source[32] = (uint64_t)win; // Try to overwrite RA with win() (Will fail)
+  
+    memcpy(buffer, source, sizeof(source) + 64); 
+
+    CFI_RETURN(1);
+}
+
+int main(void)
+{
+    // Setup UART access
+    setup_uart();
+
+	char read_line[20];
+	uint8_t line_index = 0;
+    alt_puts("Enter a character:");
+
+    /*
+    while(1){
+		char c = uart_getchar();
+		read_line[line_index] = c;
+		line_index++;
+		if(c == '\n' || c == '\r'){
+			read_line[line_index] = '\0';
+			break;
+		}
+	}
+    */
+   
+	alt_printf("You entered: %s\n", read_line);
+
+    alt_printf("Before Non-Vulnerable\n");
+
+    non_vulnerable();
+
+    alt_printf("Before Vulnerable\n");
+
+    vulnerable();
+
+    alt_printf("Successful exit\n");
+}

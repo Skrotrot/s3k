@@ -2,13 +2,14 @@
 #include "altc/string.h"
 #include "s3k/s3k.h"
 #include <stdint.h>
+#include "../app_sections.h"
+#include "../../tutorial-commons/utils.h"
 
 #define APP_0_BAK_PMP_SLOT 3
 #define APP_0_PMP_SLOT 4
 #define LOCAL_APP_0_BAK_BASE_ADDR 0x80020000
 #define LOCAL_APP_1_BASE_ADDR 0x80030000
 #define LOCAL_APP_1_SIZE 0x10000
-#include "../../tutorial-commons/utils.h"
 
 static uint32_t free_cap_idx;
 static uint32_t free_cap_bak_mem_idx;
@@ -19,6 +20,9 @@ static uint32_t free_reset_cap_index;
 static uint64_t app1_addr;
 static uint64_t uart_addr;
 
+char trap_stack[1024];
+
+void trap_handler(void) __attribute__((interrupt("machine")));
 void access_backup_mem();
 void move_pmp_access();
 void unload_move_pmp();
@@ -35,9 +39,9 @@ int terminate_process(int monitor, int app1_id, s3k_state_t state);
 void access_backup_mem(){
 	uint64_t app0_bak_addr = s3k_napot_encode(LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_1_SIZE);
 	uint32_t free_cap_bak_mem_idx = find_free_cap();
-	log_sys("app0 backup memory: region created", s3k_cap_derive(RAM_MEM, free_cap_bak_mem_idx, s3k_mk_memory(LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_0_BAK_BASE_ADDR + LOCAL_APP_1_SIZE, S3K_MEM_RWX)));
+	log_sys("app0 backup memory: region created", s3k_cap_derive(RAM_MEM, free_cap_bak_mem_idx, s3k_mk_memory(LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_0_BAK_BASE_ADDR + LOCAL_APP_1_SIZE, S3K_MEM_RW)));
 	uint32_t free_cap_bak_idx = find_free_cap();
-	log_sys("app0 backup memory: pmp cap derived", s3k_cap_derive(free_cap_bak_mem_idx, free_cap_bak_idx, s3k_mk_pmp(app0_bak_addr, S3K_MEM_RWX)));
+	log_sys("app0 backup memory: pmp cap derived", s3k_cap_derive(free_cap_bak_mem_idx, free_cap_bak_idx, s3k_mk_pmp(app0_bak_addr, S3K_MEM_RW)));
 
 	log_sys("app0 backup memory: region loaded to app0 for access.", s3k_pmp_load(free_cap_bak_idx, APP_0_BAK_PMP_SLOT));
 
@@ -107,18 +111,28 @@ void unload_move_pmp()
 void reset_process()
 {
 	free_reset_cap_index = find_free_cap();
-	s3k_mon_suspend(MONITOR, APP1_PID);
+
+	log_sys("app1 suspended", s3k_mon_suspend(MONITOR, APP1_PID));
+	s3k_state_t state;
+	if (s3k_mon_state_get(MONITOR, APP1_PID, &state) == S3K_SUCCESS)
+	{
+		alt_printf("app state: 0x%x\n", state);
+	}
+
 	log_sys("app1 memory: pmp region unloaded from app1.", s3k_mon_pmp_unload(MONITOR, APP1_PID, APP_1_CAP_PMP_MEM));
 
 	log_sys("app1 memory: region moved app1 -> app0", s3k_mon_cap_move(MONITOR, APP1_PID, APP_1_CAP_PMP_MEM, APP0_PID, free_reset_cap_index));
-
+	
 	log_sys("app1 memory: pmp region loaded to app0 for access.", s3k_pmp_load(free_reset_cap_index, APP_0_PMP_SLOT));
-	memory_copy(0x80030000, 0x80020000, 200);
+
+	debug_capability_from_idx(free_reset_cap_index);
+	s3k_sync_mem();
+	memory_copy(LOCAL_APP_1_BASE_ADDR, LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_1_SIZE);
 
 	log_sys("reset program counter", s3k_mon_reg_write(MONITOR, APP1_PID, S3K_REG_PC, LOCAL_APP_1_BASE_ADDR));
 
-	s3k_sync_mem();
 	move_pmp_access();
+	s3k_sync_mem();
 }
 
 /* 
@@ -127,8 +141,10 @@ void reset_process()
 void memory_copy(uint32_t dst_address, uint32_t src_address, uint32_t size){
 	volatile uint32_t *dst_memory = (volatile uint32_t *)(uintptr_t)dst_address;
 	volatile uint32_t *src_memory = (volatile uint32_t *)(uintptr_t)src_address;
+	alt_printf("DEBUG in memory_copy before");
 
-	memcpy((void *)dst_memory, (void *)src_memory, size * 4);
+	memcpy((void *)dst_memory, (void *)src_memory, size);
+	alt_printf("DEBUG in memory_copy after");
 	alt_printf("\nmemory region copied\n");
 
 }
@@ -159,31 +175,46 @@ int terminate_process(int monitor, int app1_id, s3k_state_t state)
 	return 0; 
 }
 
+void trap_handler(void)
+{
+	default_trap_handler();
+}
+
 int main(void)
 {
 	// Setup UART access
 	setup_uart();
-
+	setup_trap(trap_handler, trap_stack, 1024);	
+	alt_printf("app1 _start: 0x%x\n", app1_start);
+	alt_printf("app1 _data: 0x%x\n", app1_data);
+	alt_printf("app1 _bss: 0x%x\n", app1_bss);
+	alt_printf("app1 __stack_pointer: 0x%x\n", app1_stack_pointer);
+	alt_printf("backup size : 0x%x\n", ((app1_stack_pointer + app1_stack_size) - app1_data));
 	alt_puts("starting app0");
-	extern char _sdata;
 
 
+	
 	access_backup_mem();
 	access_app1_mem();
+	//print_out_memory(0x80030000, 1700);
+	//copy data + bss + stack 
+	memory_copy(LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_1_BASE_ADDR, LOCAL_APP_1_SIZE);
 
-	memory_copy(0x80020000, 0x80030000, 200);
 	//Modify the copied region for demonstrational purpose. 
-	memcpy((void *)(volatile uint32_t *)(uintptr_t)0x80020284, "AAAAAAAAAAAAAAAA", 16);
+	memcpy((void *)(volatile uint32_t *)(uintptr_t)0x800218B8, "AAAAAAAAAAAAA", 13);
 
 	unload_move_pmp();
 	setup_scheduling(ROUND_ROBIN);
 	s3k_mon_resume(MONITOR, APP1_PID);
 
-	// Due to the schedling, this sleep() is added to achive the correct demonstration.
 	s3k_sleep(10000000);
 	reset_process();
 	s3k_mon_resume(MONITOR, APP1_PID);
 
+
+
 	//s3k_state_t state;
 	//terminate_process(MONITOR, APP1_PID, state);
 }
+
+
