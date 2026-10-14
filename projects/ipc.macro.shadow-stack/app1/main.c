@@ -3,20 +3,26 @@
 #include "s3k/s3k.h"
 
 #include "../../tutorial-commons/utils.h"
-
+#define BUF_OFFSET 128
 static int _call_depth = 0;
 
 #define CFI_ENTER() \
+    s3k_msg_t msg = {0}; \
     void *__cfi_ra; \
     __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
-    alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
+    msg.data[0] = (uint64_t)__cfi_ra; \
+    msg.data[1] = (uint64_t)1; /* msg.data[1] set to 1 in order to distinguish between Enter or Exit. */ \
+    s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
+   
 
 #define CFI_RETURN(...) \
     do { \
+        s3k_msg_t msg = {0}; \
         void *__cfi_ra_now; \
         __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
-        alt_printf("Exit  %d              - 0x%x\n", \
-                   _call_depth--, __cfi_ra_now); \
+        msg.data[0] = (uint64_t)__cfi_ra_now; \
+        msg.data[1] = (uint64_t)0; \
+        s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
         return __VA_ARGS__; \
     } while (0)
 
@@ -26,20 +32,20 @@ void win()
     do {} while(1);
 }
 
-static char source[32];
-
+static char source[BUF_OFFSET];
+ 
 void vulnerable(void)
 {
     CFI_ENTER();
     char buffer[2];
 
-    alt_printf("Inside\n");
+    alt_printf("Inside vulnearble\n");
 
-    memset(source, 'A', 32); // Offset to RA
+    memset(source, 'A', BUF_OFFSET); // Offset to RA, changed due to larger RETURN macro.
 
-    *(uint64_t *)&source[32] = (uint64_t)win; // Overwrite RA with win() (Will succeed)
+    *(uint64_t *)&source[BUF_OFFSET - 8] = (uint64_t)win; // Overwrite RA with win() (Will succeed)
 
-    memcpy(buffer, source, sizeof(source) + 64);
+    memcpy(buffer, source, sizeof(source));
 
     CFI_RETURN();
 }
@@ -49,13 +55,13 @@ int non_vulnerable(void)
     CFI_ENTER();
     char buffer[128];
 
-    alt_printf("Inside\n");
+    alt_printf("Inside non-vulnerable\n");
   
     memset(source, 'A', 32); // Offset to RA
 
     *(uint64_t *)&source[32] = (uint64_t)win; // Try to overwrite RA with win() (Will fail)
   
-    memcpy(buffer, source, sizeof(source) + 64); 
+    memcpy(buffer, source, sizeof(source)); 
 
     CFI_RETURN(1);
 }
