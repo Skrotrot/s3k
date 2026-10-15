@@ -1,0 +1,6 @@
+Pass allowed function type/class with the encryption. This functions as allow list per function/pointer?
+
+Make decrypt also call the function pointer.
+
+Encrypt pointer at assignment not after.
+
