@@ -27,13 +27,27 @@ static int _call_depth = 0;
     } while (0)
 
 
-#define PTR_CRYPT(ptr) \
-    uint64_t key = 18446744073709551615ULL; \
-    ptr = (void*)((uint64_t)(ptr) ^ key); \
+#define PTR_KEY 4u
+
+#define PTR_TYPE_ID(ptr) _Generic((ptr), \
+    void (*)(void):         1u,          \
+    void (*)(int, int):     2u)
+
+#define PTR_CRYPT(fun) \
+    (__typeof__(&fun))((uint64_t)(&fun) ^ (PTR_KEY) \
 
 
-#define PTR_DECRYPT(ptr) \
-    ptr = (void*)((uint64_t)(ptr) ^ key); \
+#define PTR_DECRYPT(ptr,...) \
+    ((__typeof__(ptr))((uint64_t)(ptr) ^ PTR_KEY))(__VA_ARGS__) \
+
+
+#define PTR_CRYPT_TYPE(fun) \
+    (__typeof__(&fun))((uint64_t)(&fun) ^ ((uint64_t)PTR_KEY << 32) | PTR_TYPE_ID(ptr)) \
+
+
+#define PTR_DECRYPT_TYPE(ptr,...) \
+    ((__typeof__(ptr))((uint64_t)(ptr) ^ ((uint64_t)PTR_KEY << 32) | PTR_TYPE_ID(ptr))))(__VA_ARGS__) \
+
 
 void win()
 {
@@ -88,8 +102,7 @@ static void forward_edge_target(void)
 
 void vulnerable_forward_edge_protected(void)
 {
-    struct forward_edge_data frame = {.callback = forward_edge_target};
-    PTR_CRYPT(frame.callback);
+    struct forward_edge_data frame = {.callback = PTR_CRYPT(forward_edge_target)};
     struct forward_edge_data payload = {.callback = win};
 
     alt_printf("Inside vulnerable forward-edge protected\n");
@@ -100,7 +113,6 @@ void vulnerable_forward_edge_protected(void)
     memcpy(frame.buffer, &payload, sizeof(payload));
 
     PTR_DECRYPT(frame.callback);
-    frame.callback();
 }
 
 void vulnerable_forward_edge(void)
@@ -121,8 +133,7 @@ void vulnerable_forward_edge(void)
 
 int non_vulnerable_forward_edge(void)
 {
-    struct forward_edge_data frame = {.callback = forward_edge_target};
-    PTR_CRYPT(frame.callback);
+    struct forward_edge_data frame = {.callback = PTR_CRYPT(forward_edge_target)};
     struct forward_edge_data payload = {.callback = win};
 
     alt_printf("Inside non-vulnerable forward-edge\n");
@@ -133,7 +144,6 @@ int non_vulnerable_forward_edge(void)
     memcpy(frame.buffer, &payload, sizeof(frame.buffer));
 
     PTR_DECRYPT(frame.callback);
-    frame.callback();
 
     return 1;
 }
@@ -151,9 +161,9 @@ int main(void)
 
     vulnerable_forward_edge_protected();
 
-    //alt_printf("Before Vulnerable Forward-Edge\n");
+    alt_printf("Before Vulnerable Forward-Edge\n");
 
     //vulnerable_forward_edge();
 
-    alt_printf("Successful exit\n");
+    //alt_printf("Successful exit\n");
 }
