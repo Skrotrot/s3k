@@ -8,27 +8,6 @@
 #define TRAP_STACK_SIZE 1024
 
 char trap_stack[TRAP_STACK_SIZE];
-void trap_handler(void) __attribute__((interrupt("machine")));
-
-void debug_trap_trigger(void) __attribute__((interrupt("machine")));
-void debug_trap_trigger(void) {
-	uint64_t epc = s3k_reg_read(S3K_REG_EPC);
-	uint64_t esp = s3k_reg_read(S3K_REG_ESP);
-	uint64_t ecause = s3k_reg_read(S3K_REG_ECAUSE);
-	uint64_t eval = s3k_reg_read(S3K_REG_EVAL);
-
-	alt_printf(
-			   "error info:\n- epc: 0x%x\n- esp: 0x%x\n- ecause: 0x%x\n- eval: 0x%x\n",
-			   epc, esp, ecause, eval);
-	alt_printf("restoring pc and sp\n\n");
-    s3k_backup_read();
-} 
-
-void trap_handler(void)
-{
-	alt_puts(" === TRAP HANDLER TRIGGERED ===");
-	debug_trap_trigger();
-}
 
 static char source[32];
 
@@ -69,7 +48,7 @@ int main(void)
     // Setup UART access
     setup_uart();
 
-    setup_trap(trap_handler, trap_stack, TRAP_STACK_SIZE);
+    setup_cfi_trap(trap_stack, TRAP_STACK_SIZE);
 
     s3k_backup_write();
 

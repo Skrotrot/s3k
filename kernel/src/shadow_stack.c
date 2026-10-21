@@ -23,18 +23,6 @@ void shadow_stack_reset(pid_t pid)
 	stacks[pid].sp = -1;
 }
 
-shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra)
-{
-	shadow_stack_t *stack = &stacks[pid];
-
-	if (stack->sp >= S3K_SHADOW_STACK_SIZE - 1)
-		return SHADOW_STACK_OVERFLOW;
-
-	stack->sp++;
-	stack->frame[stack->sp] = ra;
-	return SHADOW_STACK_OK;
-}
-
 static proc_t *shadow_stack_trap_trigger(proc_t *proc, uint64_t mcause,
 				      uint64_t mtval)
 {
@@ -47,19 +35,36 @@ static proc_t *shadow_stack_trap_trigger(proc_t *proc, uint64_t mcause,
 	return proc;
 }
 
+shadow_stack_result_t shadow_stack_push(pid_t pid, uint64_t ra)
+{
+    shadow_stack_t *stack = &stacks[pid];
+
+    if (stack->sp >= S3K_SHADOW_STACK_SIZE - 1) {
+        shadow_stack_trap_trigger(proc_get(pid), MCAUSE_CFI_OVERFLOW, ra);
+        return SHADOW_STACK_OVERFLOW;
+    }
+
+    stack->sp++;
+    stack->frame[stack->sp] = ra;
+    return SHADOW_STACK_OK;
+}
+
 shadow_stack_result_t shadow_stack_pop(pid_t pid, uint64_t ra)
 {
 	shadow_stack_t *stack = &stacks[pid];
 
-	if (stack->sp < 0)
+	if (stack->sp < 0) {
+		shadow_stack_trap_trigger(proc_get(pid), MCAUSE_CFI_UNDERFLOW, ra);
 		return SHADOW_STACK_UNDERFLOW;
-	bool match = stack->frame[stack->sp] == ra;
-    stack->sp--;
+	}
 
-    if (!match) {
-        shadow_stack_trap_trigger(proc_get(pid), MCAUSE_CFI_VIOLATION, ra);
-        return SHADOW_STACK_MISMATCH;
-    }
+	bool match = stack->frame[stack->sp] == ra;
+	stack->sp--;
+
+	if (!match) {
+		shadow_stack_trap_trigger(proc_get(pid), MCAUSE_CFI_MISMATCH, ra);
+		return SHADOW_STACK_MISMATCH;
+	}
 
 	return SHADOW_STACK_OK;
 }

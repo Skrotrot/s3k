@@ -2,7 +2,9 @@
 
 #include "cap_types.h"
 
-#define MCAUSE_CFI_VIOLATION 24
+#define MCAUSE_CFI_MISMATCH  24
+#define MCAUSE_CFI_OVERFLOW  25
+#define MCAUSE_CFI_UNDERFLOW 26
 
 typedef enum {
 	SHADOW_STACK_OK = 0,

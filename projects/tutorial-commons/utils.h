@@ -102,6 +102,61 @@ void setup_trap(void (*trap_handler)(void), void * trap_stack_base, uint64_t tra
 	s3k_reg_write(S3K_REG_TSP, ((uint64_t)trap_stack_base) + trap_stack_size);
 }
 
+// --- CFI (shadow stack) helpers, shared across the shadow-stack demos ---
+
+char *shadow_stack_result_str(s3k_shadow_stack_result_t result)
+{
+	switch (result) {
+	case S3K_SHADOW_STACK_OK:
+		return "SHADOW STACK OK";
+	case S3K_SHADOW_STACK_MISMATCH:
+		return "SHADOW STACK MISMATCH";
+	case S3K_SHADOW_STACK_UNDERFLOW:
+		return "SHADOW STACK UNDERFLOW";
+	case S3K_SHADOW_STACK_OVERFLOW:
+		return "SHADOW STACK OVERFLOW";
+	}
+	return "UNKNOWN";
+}
+
+#define CFI_ENTER() \
+    void *__cfi_ra; \
+    __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
+    s3k_shadow_stack_result_t __cfi_push_result = s3k_shadow_stack_push(__cfi_ra); \
+    alt_printf("Enter 0x%x [%s]\n", __cfi_ra, shadow_stack_result_str(__cfi_push_result))
+
+#define CFI_RETURN(...) \
+    do { \
+        void *__cfi_ra_now; \
+        __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
+        s3k_shadow_stack_result_t __cfi_result = s3k_shadow_stack_pop(__cfi_ra_now); \
+        alt_printf("Exit 0x%x [%s]\n", __cfi_ra_now, \
+                   shadow_stack_result_str(__cfi_result)); \
+        return __VA_ARGS__; \
+    } while (0)
+
+void cfi_trap_handler(void) __attribute__((interrupt("machine")));
+void cfi_trap_handler(void)
+{
+	alt_puts(" === CFI TRAP HANDLER TRIGGERED ===");
+
+	uint64_t epc = s3k_reg_read(S3K_REG_EPC);
+	uint64_t esp = s3k_reg_read(S3K_REG_ESP);
+	uint64_t ecause = s3k_reg_read(S3K_REG_ECAUSE);
+	uint64_t eval = s3k_reg_read(S3K_REG_EVAL);
+
+	alt_printf(
+		   "error info:\n- epc: 0x%x\n- esp: 0x%x\n- ecause: 0x%x\n- eval: 0x%x\n",
+		   epc, esp, ecause, eval);
+	alt_printf("restoring pc and sp\n\n");
+	s3k_backup_read();
+}
+
+void setup_cfi_trap(void *trap_stack_base, uint64_t trap_stack_size)
+{
+	setup_trap(cfi_trap_handler, trap_stack_base, trap_stack_size);
+}
+
 
 #define TAG_BLOCK_TO_ADDR(tag, block) ( \
 					(((uint64_t) tag) << S3K_MAX_BLOCK_SIZE) + \
