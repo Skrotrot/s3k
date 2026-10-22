@@ -3,6 +3,11 @@
 
 #include "../../tutorial-commons/utils.h"
 #include "../demo.h"
+#include "s3k/syscall.h"
+
+#define TRAP_STACK_SIZE 1024
+
+char trap_stack[TRAP_STACK_SIZE];
 
 static char source[32];
 
@@ -40,7 +45,13 @@ int non_vulnerable(void)
 
 int main(void)
 {
-    alt_printf("\n[APP1]\n");
+    // Setup UART access
+    setup_uart();
+
+    setup_cfi_trap(trap_stack, TRAP_STACK_SIZE);
+
+    s3k_backup_write();
+
     run_shadow_stack_demo();
 
     do {} while(1);

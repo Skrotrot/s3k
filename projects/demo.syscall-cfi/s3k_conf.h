@@ -26,7 +26,7 @@
 #define VERBOSITY 0
 
 // Number of return addresses per process' shadow stack.
-#define S3K_SHADOW_STACK_SIZE 10
+#define S3K_SHADOW_STACK_SIZE 1024
 
 // Max amount of resets if the a shadowstack mismatch happens
 #define S3K_PROC_MAX_RESETS 3

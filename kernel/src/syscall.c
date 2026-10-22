@@ -638,10 +638,14 @@ err_t validate_shadow_stack_push(const sys_args_t *args)
 
 proc_t *handle_shadow_stack_push(proc_t *const p, const sys_args_t *args)
 {
-	p->regs[REG_T0] = SUCCESS;
-	p->regs[REG_A0]
-	    = shadow_stack_push(p->pid, (uint64_t)args->code_address.address);
-	return p;
+    shadow_stack_result_t result = shadow_stack_push(p->pid, (uint64_t)args->code_address.address);
+
+    if (result == SHADOW_STACK_OVERFLOW)
+        return p;
+
+    p->regs[REG_T0] = SUCCESS;
+    p->regs[REG_A0] = result;
+    return p;
 }
 
 err_t validate_shadow_stack_pop(const sys_args_t *args)
@@ -653,8 +657,8 @@ proc_t *handle_shadow_stack_pop(proc_t *const p, const sys_args_t *args)
 {
     shadow_stack_result_t result = shadow_stack_pop(p->pid, (uint64_t)args->code_address.address);
 
-    if (result == SHADOW_STACK_MISMATCH)
-        return (p->state & PSF_SUSPENDED) ? NULL : p;
+    if (result == SHADOW_STACK_MISMATCH || result == SHADOW_STACK_UNDERFLOW)
+        return p;
 
     p->regs[REG_T0] = SUCCESS;
     p->regs[REG_A0] = result;
