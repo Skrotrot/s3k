@@ -71,6 +71,7 @@ static void win2(int a, int b)
     alt_printf("Attack 2 works");
 }
 
+// This function is to demonstrate pointer authentication prevents exploitation of vulnerable function.
 void vulnerable_forward_edge_protected(void)
 {
     struct forward_edge_data_1 frame = {.callback = PTR_AUTH_INIT(forward_edge_target)};
@@ -80,12 +81,14 @@ void vulnerable_forward_edge_protected(void)
 
     memset(payload.buffer, 'A', sizeof(payload.buffer));
 
-    // Overflow the buffer into callback, redirecting the indirect call to win().
+    // Overflow the buffer into callback, redirecting the indirect call to win2().
     memcpy(frame.buffer, &payload, sizeof(payload));
 
+    // Signature should fail based on wrong type detected.
     PTR_AUTH(frame.callback);
 }
 
+// This function is to demonstrate the vulnerability exists without pointer authentication.
 void vulnerable_forward_edge(void)
 {
     struct forward_edge_data_1 frame = {.callback = {.callback_fun = forward_edge_target}};
@@ -95,17 +98,19 @@ void vulnerable_forward_edge(void)
 
     memset(payload.buffer, 'A', sizeof(payload.buffer));
 
-    // Overflow the buffer into callback, redirecting the indirect call to win().
+    // Overflow the buffer into callback, redirecting the indirect call to win2().
     memcpy(frame.buffer, &payload, sizeof(payload));
 
+    // No authentication, win2 should run. 
     frame.callback.callback_fun();
 }
 
 
+// This function is to demonstrate the pointer authentication will not break functions in normal (non-vulnerable) cases.
 int non_vulnerable_forward_edge(void)
 {
     struct forward_edge_data_1 frame = {.callback = PTR_AUTH_INIT(forward_edge_target)};
-    struct forward_edge_data_1 payload = {.callback = PTR_AUTH_INIT(win)};
+    struct forward_edge_data_2 payload = {.callback = PTR_AUTH_INIT(win2)};
 
     alt_printf("Inside non-vulnerable forward-edge\n");
 
@@ -134,7 +139,7 @@ int main(void)
 
     alt_printf("Before Vulnerable Forward-Edge\n");
 
-    //vulnerable_forward_edge();
+    vulnerable_forward_edge();
 
     //alt_printf("Successful exit\n");
 }
