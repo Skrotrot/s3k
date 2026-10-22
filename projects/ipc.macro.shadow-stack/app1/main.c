@@ -3,53 +3,13 @@
 #include "s3k/s3k.h"
 
 #include "../../tutorial-commons/utils.h"
+#include "backward_edge.h"
+#include "forward_edge.h"
+
 #define BUF_OFFSET 128
 static int _call_depth = 0;
 
-#define CFI_ENTER() \
-    s3k_msg_t msg = {0}; \
-    void *__cfi_ra; \
-    __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
-    msg.data[0] = (uint64_t)__cfi_ra; \
-    msg.data[1] = (uint64_t)1; /* msg.data[1] set to 1 in order to distinguish between Enter or Exit. */ \
-    s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-   
-
-#define CFI_RETURN(...) \
-    do { \
-        s3k_msg_t msg = {0}; \
-        void *__cfi_ra_now; \
-        __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
-        msg.data[0] = (uint64_t)__cfi_ra_now; \
-        msg.data[1] = (uint64_t)0; \
-        s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-        return __VA_ARGS__; \
-    } while (0)
-
-
-#define PTR_KEY 4u
-
-#define PTR_TYPE_ID(ptr) _Generic((ptr), \
-    void (*)(void):         1u,          \
-    void (*)(int, int):     2u)
-
-#define PTR_CRYPT(fun) \
-    (__typeof__(&fun))((uint64_t)(&fun) ^ (PTR_KEY) \
-
-
-#define PTR_DECRYPT(ptr,...) \
-    ((__typeof__(ptr))((uint64_t)(ptr) ^ PTR_KEY))(__VA_ARGS__) \
-
-
-#define PTR_CRYPT_TYPE(fun) \
-    (__typeof__(&fun))((uint64_t)(&fun) ^ ((uint64_t)PTR_KEY << 32) | PTR_TYPE_ID(ptr)) \
-
-
-#define PTR_DECRYPT_TYPE(ptr,...) \
-    ((__typeof__(ptr))((uint64_t)(ptr) ^ ((uint64_t)PTR_KEY << 32) | PTR_TYPE_ID(ptr))))(__VA_ARGS__) \
-
-
-void win()
+void win(void)
 {
     alt_printf("Attack Works\n");
     do {} while(1);
@@ -90,20 +50,31 @@ int non_vulnerable(void)
 }
 
 // Keep the buffer and indirect-call target together so the overflow reaches it.
-struct forward_edge_data {
+struct forward_edge_data_1 {
     char buffer[32];
-    void (*callback)(void);
+    struct function_ptr_1 callback;
 };
+
+struct forward_edge_data_2 {
+    char buffer[32];
+    struct function_ptr_2 callback;
+};
+
 
 static void forward_edge_target(void)
 {
     alt_printf("Expected forward-edge target\n");
 }
 
+static void win2(int a, int b)
+{
+    alt_printf("Attack 2 works");
+}
+
 void vulnerable_forward_edge_protected(void)
 {
-    struct forward_edge_data frame = {.callback = PTR_CRYPT(forward_edge_target)};
-    struct forward_edge_data payload = {.callback = win};
+    struct forward_edge_data_1 frame = {.callback = PTR_AUTH_INIT(forward_edge_target)};
+    struct forward_edge_data_2 payload = {.callback = PTR_AUTH_INIT(win2)};
 
     alt_printf("Inside vulnerable forward-edge protected\n");
 
@@ -112,13 +83,13 @@ void vulnerable_forward_edge_protected(void)
     // Overflow the buffer into callback, redirecting the indirect call to win().
     memcpy(frame.buffer, &payload, sizeof(payload));
 
-    PTR_DECRYPT(frame.callback);
+    PTR_AUTH(frame.callback);
 }
 
 void vulnerable_forward_edge(void)
 {
-    struct forward_edge_data frame = {.callback = forward_edge_target};
-    struct forward_edge_data payload = {.callback = win};
+    struct forward_edge_data_1 frame = {.callback = {.callback_fun = forward_edge_target}};
+    struct forward_edge_data_2 payload = {.callback = {.callback_fun = win2}};
 
     alt_printf("Inside vulnerable forward-edge\n");
 
@@ -127,14 +98,14 @@ void vulnerable_forward_edge(void)
     // Overflow the buffer into callback, redirecting the indirect call to win().
     memcpy(frame.buffer, &payload, sizeof(payload));
 
-    frame.callback();
+    frame.callback.callback_fun();
 }
 
 
 int non_vulnerable_forward_edge(void)
 {
-    struct forward_edge_data frame = {.callback = PTR_CRYPT(forward_edge_target)};
-    struct forward_edge_data payload = {.callback = win};
+    struct forward_edge_data_1 frame = {.callback = PTR_AUTH_INIT(forward_edge_target)};
+    struct forward_edge_data_1 payload = {.callback = PTR_AUTH_INIT(win)};
 
     alt_printf("Inside non-vulnerable forward-edge\n");
 
@@ -143,7 +114,7 @@ int non_vulnerable_forward_edge(void)
     // Limit the same attack payload to the buffer, preserving callback.
     memcpy(frame.buffer, &payload, sizeof(frame.buffer));
 
-    PTR_DECRYPT(frame.callback);
+    PTR_AUTH(frame.callback);
 
     return 1;
 }
