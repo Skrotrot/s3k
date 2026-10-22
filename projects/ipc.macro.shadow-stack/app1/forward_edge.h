@@ -19,10 +19,10 @@
     (__typeof__(PTR_TYPE_STRUCT(&fun))){.callback_fun = fun, .signature = (PTR_KEY ^ PTR_TYPE_ID(&fun) ^ (uint64_t)&fun)}
 
 #define PTR_AUTH(ptr,...) \
-    if (ptr.signature == (PTR_KEY ^ PTR_TYPE_ID(ptr.callback_fun) ^ (uint64_t)ptr.callback_fun) \
+    if (ptr.signature == (PTR_KEY ^ PTR_TYPE_ID(ptr.callback_fun) ^ (uint64_t)ptr.callback_fun)) \
         ptr.callback_fun(__VA_ARGS__); \
     else \
-        alt_printf("Function pointer overwrite detected");
+        alt_printf("Function pointer overwrite detected\n");
 
 // Declare function pointers with type and signature.
 struct function_ptr_1 {
