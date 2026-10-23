@@ -9,7 +9,7 @@
 #define APP_0_BAK_PMP_SLOT 3
 #define APP_0_PMP_SLOT 4
 #define LOCAL_APP_0_BAK_BASE_ADDR 0x80020000
-#define LOCAL_APP_1_BASE_ADDR 0x80030000
+#define LOCAL_APP_1_BASE_ADDR app1_start
 #define LOCAL_APP_1_SIZE 0x10000
 
 #define UART_RHR        0
@@ -39,8 +39,8 @@ void unload_move_pmp();
 void reset_process();
 void memory_copy(uint32_t dst_address, uint32_t src_address, uint32_t size);
 void print_out_memory(unsigned int base_address, int size);
-int terminate_process(int monitor, int app1_id, s3k_state_t state);
 void debug_toggle();
+int terminate_process(int monitor, int app1_id, s3k_state_t state);
 
 bool debug_set;
 uint32_t local_log_sys(char * msg, uint32_t res);
@@ -87,11 +87,12 @@ void access_app1_mem(){
 */
 void move_pmp_access(uint32_t free_cap_idx)
 {
-	s3k_sync_mem();
-
+	
 	local_log_sys("app1 memory: pmp region unloaded from app0.           |", s3k_pmp_unload(free_cap_idx));
 	local_log_sys("app1 memory: region moved app0 -> app1                |", s3k_mon_cap_move(MONITOR, APP0_PID, free_cap_idx, APP1_PID, APP_1_CAP_PMP_MEM));
 	local_log_sys("app1 memory: pmp region loaded to app1 for access.    |", s3k_mon_pmp_load(MONITOR, APP1_PID, APP_1_CAP_PMP_MEM, APP_1_PMP_SLOT_MEM));
+	
+	s3k_sync_mem();
 }
 
 /* 
@@ -154,8 +155,7 @@ void memory_copy(uint32_t dst_address, uint32_t src_address, uint32_t size){
 void print_out_memory(unsigned int base_address, int size)
 {
 	volatile uint32_t *memory = (volatile uint32_t *)(uintptr_t)base_address;
-	for (int i = 0; i < size; i++) 
-	{
+	for (int i = 0; i < size; i++){
 		uint32_t value = memory[i];
 		alt_printf("0x%x: 0x%x\n", base_address + i * 4, value);
 	}
@@ -167,32 +167,20 @@ void print_out_memory(unsigned int base_address, int size)
 int terminate_process(int monitor, int app1_id, s3k_state_t state)
 {
 	s3k_mon_suspend(MONITOR, APP1_PID);
-	if (s3k_mon_state_get(MONITOR, APP1_PID, &state) == S3K_SUCCESS)
-	{
+
+	if (s3k_mon_state_get(MONITOR, APP1_PID, &state) == S3K_SUCCESS){
 		alt_printf("app state: 0x%x\n", state);
 	}
 	return 0; 
 }
 
-uint32_t local_log_sys(char * msg, uint32_t res) {
-    
+uint32_t local_log_sys(char * msg, uint32_t res)
+{
 	if(debug_set){
 		alt_printf("%s 0x%x\n", msg, res);
 	}
 }
 
-void local_scheduling()
-{
-	s3k_cap_delete(HART2_TIME);
-	s3k_cap_delete(HART3_TIME);
-
-	s3k_cap_delete(HART1_TIME);
-	uint32_t cap_idx = find_free_cap();
-	local_log_sys("Time derivation", 
-		s3k_cap_derive(HART0_TIME, cap_idx, s3k_mk_time(S3K_MIN_HART, 0, S3K_SLOT_CNT / 2)));
-	local_log_sys("Time delegation", s3k_mon_cap_move(MONITOR, APP0_PID, cap_idx, APP1_PID, APP_1_TIME));
-
-}
 
 static char uart_getchar(void)
 {
@@ -202,7 +190,6 @@ static char uart_getchar(void)
     /* Wait until a character is available. */
     while ((uart[UART_LSR] & UART_LSR_DR) == 0) {
     }
-
     return (char)uart[UART_RHR];
 }
 
@@ -211,7 +198,9 @@ void trap_handler(void)
 	default_trap_handler();
 }
 
-void debug_toggle(){
+void debug_toggle()
+{
+	line_index = 0;
 	alt_printf("Debug mode?[Y/N]\n");
 	while(1){
 		c = uart_getchar();
@@ -222,26 +211,18 @@ void debug_toggle(){
 			break;
 		}
 	}
-	alt_printf("You entered: %s\n", read_line);
-	if(line_index == 1){
-		if(!memcmp(read_line, "Y", 1) || !memcmp(read_line, "y", 1)){
-			alt_printf("Debug mode ON\n");
-			debug_set = true;
-		}
-		else{
-			debug_set = false;
-		}
-	}
-	else{
+
+	if(!memcmp(read_line, "Y", 1) || !memcmp(read_line, "y", 1)){
+		alt_printf("Debug mode ON\n");
 		debug_set = true;
 	}
-
-	memcpy(read_line, "\0", sizeof(read_line));
+	else{
+		debug_set = false;
+	}
 }
 
 int main(void)
 {
-
 	uint32_t free_cap_idx = find_free_cap();
 	s3k_msg_t reply = {0};
 	s3k_reply_t receive;
@@ -249,24 +230,30 @@ int main(void)
 	s3k_err_t err;
 	uint64_t latest[4] = {0};
 
-	// Setup UART access
 	setup_uart();
 	setup_trap(trap_handler, trap_stack, 1024);	
 	alt_printf("DEMO: Starting IPC monitor\n");
 
+	alt_printf("app1 _start: 0x%x\n", app1_start);
+	alt_printf("app1 _data: 0x%x\n", app1_data);
+	alt_printf("app1 _bss: 0x%x\n", app1_bss);
+	alt_printf("app1 __stack_pointer: 0x%x\n", app1_stack_pointer);
+	alt_printf("backup size : 0x%x\n", ((app1_stack_pointer + app1_stack_size) - app1_data));
+	alt_printf("app1 __stack_end: 0x%x\n", app1_stack_end);
+	alt_printf("app1 size : 0x%x\n", LOCAL_APP_1_SIZE);
+
 	debug_toggle();
-	alt_printf("backup size : 0x%x\n", (app1_stack_pointer - app1_data));
 	access_backup_mem();
 	access_app1_mem();
+
 	// backup app1 memory
 	memory_copy(LOCAL_APP_0_BAK_BASE_ADDR, LOCAL_APP_1_BASE_ADDR, LOCAL_APP_1_SIZE); 
-
 	unload_move_pmp();
-	//local_scheduling();
+
 	setup_scheduling(ROUND_ROBIN);
 	uint32_t socket = setup_socket(true, false, false);
-	s3k_mon_resume(MONITOR, APP1_PID);
 
+	s3k_mon_resume(MONITOR, APP1_PID);
 
 	reply.data[1] = 1;
 	int adress_stored = 0;
@@ -274,14 +261,12 @@ int main(void)
 	int running = 1;
 	int reset_threshold = 0;
 
-	//s3k_state_t state;
-	//terminate_process(MONITOR, APP1_PID, state);
 	Stack *shadow_stack = init_stack();
-
+	uint64_t address_from_stack;
+	
 	while (running) {
 		receive = s3k_sock_recv(socket, free_cap_idx);
 		local_log_sys("	err from receive: ",  receive.err);
-
 		local_log_sys("	FROM APP1: ",  receive.data[0]);
 		
 		if(receive.data[1])
@@ -292,10 +277,9 @@ int main(void)
 		}
 		else
 		{
-			uint64_t address_from_stack = pop(shadow_stack);
+			address_from_stack = pop(shadow_stack);
 			local_log_sys("	POPPED: ", address_from_stack);
-			if((memcmp(&receive.data[0], &address_from_stack, sizeof(&address_from_stack))))
-			{
+			if((memcmp(&receive.data[0], &address_from_stack, sizeof(&address_from_stack)))){
 				alt_printf("Allowed!\n\n");
 				s3k_sock_send(socket, &reply);
 			}
@@ -309,7 +293,6 @@ int main(void)
 				reset_threshold += 1;
 				alt_printf("Denied!\n\n");
 
-				line_index = 0;
 				debug_toggle();
 
 				s3k_sock_send(socket, &reply);

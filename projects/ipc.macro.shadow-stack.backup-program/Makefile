@@ -33,7 +33,9 @@ app1-postprocess: app1
 	readelf -s ${BUILD}/app1.elf | awk '$$8 == "_end" {print "#define app1_end 0x" $$2}' >> app_sections.h
 
 	readelf -s ${BUILD}/app1.elf | awk '$$8 == "__stack_pointer" {print "#define app1_stack_pointer 0x" $$2}' >> app_sections.h
-	readelf -s ${BUILD}/app1.elf | awk '$$8 == "__stack_size" {print "#define app1_Stack_size 0x" $$2}' >> app_sections.h
+	readelf -s ${BUILD}/app1.elf | awk '$$8 == "__stack_size" {print "#define app1_stack_size 0x" $$2}' >> app_sections.h
+	readelf -s ${BUILD}/app1.elf | awk '$$8 == "__stack_end" {print "#define app1_stack_end 0x" $$2}' >> app_sections.h
+	
 kernel: common 
 	@${MAKE} -C ${ROOT}/kernel
 
