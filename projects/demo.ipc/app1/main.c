@@ -17,10 +17,7 @@ int main(void)
 	alt_snprintf((char *)&(msg.data), 32, "Return address");
 	while (1) {
 		for(int i; i < 5; i++){
-
 			do {
-
-				//uint64_t ra = s3k_reg_read(S3K_REG_RA);
 				
 				alt_snprintf((char *)&(msg.data), 32, "Return address");
 				reply = s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg);
