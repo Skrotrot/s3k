@@ -53,8 +53,8 @@ int main(void)
 			s3k_sock_send(socket, &reply);
 
 			// There are mulitple ways to remove capabilites from app1
-				//s3k_cap_delete(HART1_TIME);
-				//s3k_cap_revoke(HART0_TIME);
+
+			//s3k_cap_revoke(HART0_TIME);
 
 			s3k_mon_suspend(MONITOR, APP1_PID);
 
