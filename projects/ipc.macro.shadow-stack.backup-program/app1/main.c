@@ -5,47 +5,28 @@
 #include "../../tutorial-commons/utils.h"
 #define BUF_OFFSET 128
 
-#define UART_RHR        0
-#define UART_LSR        5
-#define UART_LSR_DR     0x01
-
 static int _call_depth = 0;
 
 #define CFI_ENTER() \
     s3k_msg_t msg = {0}; \
-    s3k_reply_t reply; \
     void *__cfi_ra; \
     __asm__ volatile ("mv %0, ra" : "=r"(__cfi_ra)); \
-    alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra); \
+    msg.data[0] = (uint64_t)__cfi_ra; \
+    msg.data[1] = (uint64_t)1; /* msg.data[1] set to 1 in order to distinguish between exit. */ \
     s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-    alt_printf("Enter %d   0x%x -\n", ++_call_depth, __cfi_ra)
    
 
 #define CFI_RETURN(...) \
     do { \
         s3k_msg_t msg = {0}; \
-        s3k_reply_t reply; \
         void *__cfi_ra_now; \
         __asm__ volatile ("ld %0, -8(s0)" : "=r"(__cfi_ra_now)); \
-        alt_snprintf((void *)&(msg.data), sizeof(msg.data), "0x%x", __cfi_ra_now); \
+        msg.data[0] = (uint64_t)__cfi_ra_now; \
+        msg.data[1] = (uint64_t)0; \
         s3k_sock_sendrecv(APP_1_CAP_SOCKET, &msg); \
-        alt_printf("Exit  %d              - 0x%x\n", \
-                   _call_depth--, __cfi_ra_now); \
         return __VA_ARGS__; \
     } while (0)
 
-
-static char uart_getchar(void)
-{
-    volatile uint8_t *uart =
-        (volatile uint8_t *)UART0_BASE_ADDR;
-
-    /* Wait until a character is available. */
-    while ((uart[UART_LSR] & UART_LSR_DR) == 0) {
-    }
-
-    return (char)uart[UART_RHR];
-}
 
 void win()
 {
@@ -91,24 +72,6 @@ int main(void)
 {
     // Setup UART access
     setup_uart();
-
-	char read_line[20];
-	uint8_t line_index = 0;
-    alt_puts("Enter a character:");
-
-    /*
-    while(1){
-		char c = uart_getchar();
-		read_line[line_index] = c;
-		line_index++;
-		if(c == '\n' || c == '\r'){
-			read_line[line_index] = '\0';
-			break;
-		}
-	}
-    */
-   
-	alt_printf("You entered: %s\n", read_line);
 
     alt_printf("Before Non-Vulnerable\n");
 
