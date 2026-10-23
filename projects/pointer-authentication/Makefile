@@ -9,7 +9,7 @@ export EXTRA_LDFLAGS 	:= -fno-lto
 
 include ${ROOT}/tools.mk
 
-APPS=app0 app1
+APPS=app0
 
 ELFS:=${patsubst %, ${BUILD}/%.elf, kernel ${APPS}}
 

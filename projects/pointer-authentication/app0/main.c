@@ -3,51 +3,8 @@
 #include "s3k/s3k.h"
 
 #include "../../tutorial-commons/utils.h"
-#include "backward_edge.h"
 #include "forward_edge.h"
 
-#define BUF_OFFSET 128
-static int _call_depth = 0;
-
-void win(void)
-{
-    alt_printf("Attack Works\n");
-    do {} while(1);
-}
-
-static char source[BUF_OFFSET];
- 
-void vulnerable(void)
-{
-    CFI_ENTER();
-    char buffer[2];
-
-    alt_printf("Inside vulnearble\n");
-
-    memset(source, 'A', BUF_OFFSET); // Offset to RA, changed due to larger RETURN macro.
-
-    *(uint64_t *)&source[BUF_OFFSET - 8] = (uint64_t)win; // Overwrite RA with win() (Will succeed)
-
-    memcpy(buffer, source, sizeof(source));
-
-    CFI_RETURN();
-}
-
-int non_vulnerable(void)
-{
-    CFI_ENTER();
-    char buffer[128];
-
-    alt_printf("Inside non-vulnerable\n");
-  
-    memset(source, 'A', 32); // Offset to RA
-
-    *(uint64_t *)&source[32] = (uint64_t)win; // Try to overwrite RA with win() (Will fail)
-  
-    memcpy(buffer, source, sizeof(source)); 
-
-    CFI_RETURN(1);
-}
 
 // Keep the buffer and indirect-call target together so the overflow reaches it.
 struct forward_edge_data_1 {
