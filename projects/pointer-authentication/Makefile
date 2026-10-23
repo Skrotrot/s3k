@@ -1,9 +1,11 @@
 .POSIX:
 
-export PLATFORM   ?=qemu_virt
-export ROOT       :=${abspath ../..}
-export BUILD      :=${abspath build/${PLATFORM}}
-export S3K_CONF_H :=${abspath s3k_conf.h}
+export PLATFORM   		?=qemu_virt
+export ROOT       		:=${abspath ../..}
+export BUILD      		:=${abspath build/${PLATFORM}}
+export S3K_CONF_H 		:=${abspath s3k_conf.h}
+export EXTRA_CFLAGS 	:= -O0 -fno-lto -fno-inline -fno-optimize-sibling-calls
+export EXTRA_LDFLAGS 	:= -fno-lto
 
 include ${ROOT}/tools.mk
 
@@ -23,7 +25,7 @@ kernel: common
 	@${MAKE} -C ${ROOT}/kernel
 
 ${APPS}: common
-	@${MAKE} -f ../build.mk PROGRAM=$@
+	@${MAKE} -f ../build.mk PROGRAM=$@ 
 
 qemu: kernel ${APPS}
 	@ELFS="${ELFS}" ${ROOT}/scripts/qemu.sh
